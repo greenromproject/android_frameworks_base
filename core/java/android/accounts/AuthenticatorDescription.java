@@ -44,16 +44,9 @@ public class AuthenticatorDescription implements Parcelable {
     /** The package name that can be used to lookup the resources from above. */
     final public String packageName;
 
-    /** Authenticator handles its own token caching and permission screen 
-      * @hide
-      */
-    final public boolean customTokens;
-
-    /** A constructor for a full AuthenticatorDescription
-     *  @hide 
-     */
+    /** A constructor for a full AuthenticatorDescription */
     public AuthenticatorDescription(String type, String packageName, int labelId, int iconId,
-            int smallIconId, int prefId, boolean customTokens) {
+            int smallIconId, int prefId) {
         if (type == null) throw new IllegalArgumentException("type cannot be null");
         if (packageName == null) throw new IllegalArgumentException("packageName cannot be null");
         this.type = type;
@@ -62,12 +55,6 @@ public class AuthenticatorDescription implements Parcelable {
         this.iconId = iconId;
         this.smallIconId = smallIconId;
         this.accountPreferencesId = prefId;
-        this.customTokens = customTokens;
-    }
-
-    public AuthenticatorDescription(String type, String packageName, int labelId, int iconId,
-            int smallIconId, int prefId) {
-        this(type, packageName, labelId, iconId, smallIconId, prefId, false);
     }
 
     /**
@@ -87,7 +74,6 @@ public class AuthenticatorDescription implements Parcelable {
         this.iconId = 0;
         this.smallIconId = 0;
         this.accountPreferencesId = 0;
-        this.customTokens = false;
     }
 
     private AuthenticatorDescription(Parcel source) {
@@ -97,7 +83,6 @@ public class AuthenticatorDescription implements Parcelable {
         this.iconId = source.readInt();
         this.smallIconId = source.readInt();
         this.accountPreferencesId = source.readInt();
-        this.customTokens = source.readByte() == 1;
     }
 
     /** @inheritDoc */
@@ -130,7 +115,6 @@ public class AuthenticatorDescription implements Parcelable {
         dest.writeInt(iconId);
         dest.writeInt(smallIconId);
         dest.writeInt(accountPreferencesId);
-        dest.writeByte((byte) (customTokens ? 1 : 0));
     }
 
     /** Used to create the object from a parcel. */

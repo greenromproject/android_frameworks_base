@@ -25,6 +25,6 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_PACKAGE_NAME := ConnectivityManagerTest
 
-LOCAL_CERTIFICATE := platform
+#LOCAL_INSTRUMENTATION_FOR := connectivitymanagertest
 
 include $(BUILD_PACKAGE)

@@ -22,7 +22,6 @@ import android.content.res.TypedArray;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.format.DateFormat;
-import android.text.format.DateUtils;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
@@ -34,7 +33,6 @@ import com.android.internal.R;
 import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Locale;
 
 /**
  * A view for selecting a month / year / day based on a calendar like layout.
@@ -49,10 +47,7 @@ public class DatePicker extends FrameLayout {
 
     private static final int DEFAULT_START_YEAR = 1900;
     private static final int DEFAULT_END_YEAR = 2100;
-
-    // This ignores Undecimber, but we only support real Gregorian calendars.
-    private static final int NUMBER_OF_MONTHS = 12;
-
+    
     /* UI Components */
     private final NumberPicker mDayPicker;
     private final NumberPicker mMonthPicker;
@@ -66,10 +61,6 @@ public class DatePicker extends FrameLayout {
     private int mDay;
     private int mMonth;
     private int mYear;
-
-    private Object mMonthUpdateLock = new Object();
-    private volatile Locale mMonthLocale;
-    private String[] mShortMonths;
 
     /**
      * The callback used to indicate the user changes the date.
@@ -111,7 +102,8 @@ public class DatePicker extends FrameLayout {
         });
         mMonthPicker = (NumberPicker) findViewById(R.id.month);
         mMonthPicker.setFormatter(NumberPicker.TWO_DIGIT_FORMATTER);
-        final String[] months = getShortMonths();
+        DateFormatSymbols dfs = new DateFormatSymbols();
+        String[] months = dfs.getShortMonths();
 
         /*
          * If the user is in a locale where the month names are numeric,
@@ -122,9 +114,9 @@ public class DatePicker extends FrameLayout {
             for (int i = 0; i < months.length; i++) {
                 months[i] = String.valueOf(i + 1);
             }
-            mMonthPicker.setRange(1, NUMBER_OF_MONTHS);
+            mMonthPicker.setRange(1, 12);
         } else {
-            mMonthPicker.setRange(1, NUMBER_OF_MONTHS, months);
+            mMonthPicker.setRange(1, 12, months);
         }
 
         mMonthPicker.setSpeed(200);
@@ -254,27 +246,8 @@ public class DatePicker extends FrameLayout {
             mMonth = monthOfYear;
             mDay = dayOfMonth;
             updateSpinners();
-            reorderPickers(getShortMonths());
+            reorderPickers(new DateFormatSymbols().getShortMonths());
             notifyDateChanged();
-        }
-    }
-
-    private String[] getShortMonths() {
-        final Locale currentLocale = Locale.getDefault();
-        if (currentLocale.equals(mMonthLocale) && mShortMonths != null) {
-            return mShortMonths;
-        } else {
-            synchronized (mMonthUpdateLock) {
-                if (!currentLocale.equals(mMonthLocale)) {
-                    mShortMonths = new String[NUMBER_OF_MONTHS];
-                    for (int i = 0; i < NUMBER_OF_MONTHS; i++) {
-                        mShortMonths[i] = DateUtils.getMonthString(Calendar.JANUARY + i,
-                                DateUtils.LENGTH_MEDIUM);
-                    }
-                    mMonthLocale = currentLocale;
-                }
-            }
-            return mShortMonths;
         }
     }
 

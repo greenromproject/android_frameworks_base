@@ -31,8 +31,11 @@ template<typename T> class wp;
 
 // ---------------------------------------------------------------------------
 
-#define COMPARE_WEAK(_op_)                                      \
+#define COMPARE(_op_)                                           \
 inline bool operator _op_ (const sp<T>& o) const {              \
+    return m_ptr _op_ o.m_ptr;                                  \
+}                                                               \
+inline bool operator _op_ (const wp<T>& o) const {              \
     return m_ptr _op_ o.m_ptr;                                  \
 }                                                               \
 inline bool operator _op_ (const T* o) const {                  \
@@ -43,18 +46,12 @@ inline bool operator _op_ (const sp<U>& o) const {              \
     return m_ptr _op_ o.m_ptr;                                  \
 }                                                               \
 template<typename U>                                            \
-inline bool operator _op_ (const U* o) const {                  \
-    return m_ptr _op_ o;                                        \
-}
-
-#define COMPARE(_op_)                                           \
-COMPARE_WEAK(_op_)                                              \
-inline bool operator _op_ (const wp<T>& o) const {              \
+inline bool operator _op_ (const wp<U>& o) const {              \
     return m_ptr _op_ o.m_ptr;                                  \
 }                                                               \
 template<typename U>                                            \
-inline bool operator _op_ (const wp<U>& o) const {              \
-    return m_ptr _op_ o.m_ptr;                                  \
+inline bool operator _op_ (const U* o) const {                  \
+    return m_ptr _op_ o;                                        \
 }
 
 // ---------------------------------------------------------------------------
@@ -277,43 +274,13 @@ public:
     inline  T* unsafe_get() const { return m_ptr; }
 
     // Operators
-
-    COMPARE_WEAK(==)
-    COMPARE_WEAK(!=)
-    COMPARE_WEAK(>)
-    COMPARE_WEAK(<)
-    COMPARE_WEAK(<=)
-    COMPARE_WEAK(>=)
-
-    inline bool operator == (const wp<T>& o) const {
-        return (m_ptr == o.m_ptr) && (m_refs == o.m_refs);
-    }
-    template<typename U>
-    inline bool operator == (const wp<U>& o) const {
-        return m_ptr == o.m_ptr;
-    }
-
-    inline bool operator > (const wp<T>& o) const {
-        return (m_ptr == o.m_ptr) ? (m_refs > o.m_refs) : (m_ptr > o.m_ptr);
-    }
-    template<typename U>
-    inline bool operator > (const wp<U>& o) const {
-        return (m_ptr == o.m_ptr) ? (m_refs > o.m_refs) : (m_ptr > o.m_ptr);
-    }
-
-    inline bool operator < (const wp<T>& o) const {
-        return (m_ptr == o.m_ptr) ? (m_refs < o.m_refs) : (m_ptr < o.m_ptr);
-    }
-    template<typename U>
-    inline bool operator < (const wp<U>& o) const {
-        return (m_ptr == o.m_ptr) ? (m_refs < o.m_refs) : (m_ptr < o.m_ptr);
-    }
-                         inline bool operator != (const wp<T>& o) const { return m_refs != o.m_refs; }
-    template<typename U> inline bool operator != (const wp<U>& o) const { return !operator == (o); }
-                         inline bool operator <= (const wp<T>& o) const { return !operator > (o); }
-    template<typename U> inline bool operator <= (const wp<U>& o) const { return !operator > (o); }
-                         inline bool operator >= (const wp<T>& o) const { return !operator < (o); }
-    template<typename U> inline bool operator >= (const wp<U>& o) const { return !operator < (o); }
+        
+    COMPARE(==)
+    COMPARE(!=)
+    COMPARE(>)
+    COMPARE(<)
+    COMPARE(<=)
+    COMPARE(>=)
 
 private:
     template<typename Y> friend class sp;
@@ -327,7 +294,6 @@ template <typename T>
 TextOutput& operator<<(TextOutput& to, const wp<T>& val);
 
 #undef COMPARE
-#undef COMPARE_WEAK
 
 // ---------------------------------------------------------------------------
 // No user serviceable parts below here.

@@ -103,8 +103,6 @@ public final class Ndef extends BasicTagTechnology {
     public static final int TYPE_4 = 4;
     /** @hide */
     public static final int TYPE_MIFARE_CLASSIC = 101;
-    /** @hide */
-    public static final int TYPE_ICODE_SLI = 102;
 
     /** @hide */
     public static final String UNKNOWN = "android.ndef.unknown";
@@ -119,11 +117,6 @@ public final class Ndef extends BasicTagTechnology {
     public static final String NFC_FORUM_TYPE_4 = "org.nfcforum.ndef.type4";
     /** NDEF on MIFARE Classic */
     public static final String MIFARE_CLASSIC = "com.nxp.ndef.mifareclassic";
-    /**
-     * NDEF on iCODE SLI
-     * @hide
-     */
-    public static final String ICODE_SLI = "com.nxp.ndef.icodesli";
 
     private final int mMaxNdefSize;
     private final int mCardState;
@@ -207,8 +200,6 @@ public final class Ndef extends BasicTagTechnology {
                 return NFC_FORUM_TYPE_4;
             case TYPE_MIFARE_CLASSIC:
                 return MIFARE_CLASSIC;
-            case TYPE_ICODE_SLI:
-                return ICODE_SLI;
             default:
                 return UNKNOWN;
         }

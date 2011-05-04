@@ -29,8 +29,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import android.content.res.Resources;
-
 public class PduParser {
     /**
      *  The next are WAP values defined in WSP specification.
@@ -1595,54 +1593,25 @@ public class PduParser {
                             part.setContentDisposition(parseWapString(pduDataStream, TYPE_TEXT_STRING));
                         }
 
-                        /*
-                         * some carrier mmsc servers do not support content_disposition
-                         * field correctly
-                         */
-                        boolean contentDisposition = Resources.getSystem().getBoolean(com
-                                .android.internal.R.bool.config_mms_content_disposition_support);
-
-                        if (contentDisposition) {
-                            len = parseValueLength(pduDataStream);
-                            pduDataStream.mark(1);
-                            thisStartPos = pduDataStream.available();
-                            thisEndPos = 0;
+                        /* get filename parameter and skip other parameters */
+                        thisEndPos = pduDataStream.available();
+                        if (thisStartPos - thisEndPos < len) {
                             value = pduDataStream.read();
-
-                            if (value == PduPart.P_DISPOSITION_FROM_DATA ) {
-                                part.setContentDisposition(PduPart.DISPOSITION_FROM_DATA);
-                            } else if (value == PduPart.P_DISPOSITION_ATTACHMENT) {
-                                part.setContentDisposition(PduPart.DISPOSITION_ATTACHMENT);
-                            } else if (value == PduPart.P_DISPOSITION_INLINE) {
-                                part.setContentDisposition(PduPart.DISPOSITION_INLINE);
-                            } else {
-                                pduDataStream.reset();
-                                /* Token-text */
-                                part.setContentDisposition(parseWapString(pduDataStream
-                                        , TYPE_TEXT_STRING));
+                            if (value == PduPart.P_FILENAME) { //filename is text-string
+                                part.setFilename(parseWapString(pduDataStream, TYPE_TEXT_STRING));
                             }
 
-                            /* get filename parameter and skip other parameters */
+                            /* skip other parameters */
                             thisEndPos = pduDataStream.available();
                             if (thisStartPos - thisEndPos < len) {
-                                value = pduDataStream.read();
-                                if (value == PduPart.P_FILENAME) { //filename is text-string
-                                    part.setFilename(parseWapString(pduDataStream
-                                            , TYPE_TEXT_STRING));
-                                }
-
-                                /* skip other parameters */
-                                thisEndPos = pduDataStream.available();
-                                if (thisStartPos - thisEndPos < len) {
-                                    int last = len - (thisStartPos - thisEndPos);
-                                    byte[] temp = new byte[last];
-                                    pduDataStream.read(temp, 0, last);
-                                }
+                                int last = len - (thisStartPos - thisEndPos);
+                                byte[] temp = new byte[last];
+                                pduDataStream.read(temp, 0, last);
                             }
-
-                            tempPos = pduDataStream.available();
-                            lastLen = length - (startPos - tempPos);
                         }
+
+                        tempPos = pduDataStream.available();
+                        lastLen = length - (startPos - tempPos);
                         break;
                     default:
                         if (LOCAL_LOGV) {

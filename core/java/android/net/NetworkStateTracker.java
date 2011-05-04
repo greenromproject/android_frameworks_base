@@ -185,8 +185,6 @@ public abstract class NetworkStateTracker extends Handler {
              * were hit.
              */
             mCachedGatewayAddr = 0;
-            NetworkUtils.addHostRoute(mInterfaceName, mDefaultGatewayAddr);
-            NetworkUtils.setDefaultRoute(mInterfaceName, mDefaultGatewayAddr);
         }
     }
 
@@ -454,7 +452,4 @@ public abstract class NetworkStateTracker extends Handler {
     public void interpretScanResultsAvailable() {
     }
 
-    public String getInterfaceName() {
-        return mInterfaceName;
-    }
 }

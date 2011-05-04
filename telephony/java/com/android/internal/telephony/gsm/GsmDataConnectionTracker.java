@@ -361,12 +361,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     @Override
     protected boolean isApnTypeActive(String type) {
         // TODO: support simultaneous with List instead
-        if (Phone.APN_TYPE_DUN.equals(type)) {
-            ApnSetting dunApn = fetchDunApn();
-            if (dunApn != null) {
-                return ((mActiveApn != null) && (dunApn.toString().equals(mActiveApn.toString())));
-            }
-        }
         return mActiveApn != null && mActiveApn.canHandleType(type);
     }
 
@@ -566,10 +560,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                         cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.USER)),
                         cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.PASSWORD)),
                         cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.AUTH_TYPE)),
-                        types,
-                        cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.PROTOCOL)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(
-                                Telephony.Carriers.ROAMING_PROTOCOL)));
+                        types);
                 result.add(apn);
             } while (cursor.moveToNext());
         }

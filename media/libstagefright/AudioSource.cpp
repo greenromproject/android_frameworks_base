@@ -287,10 +287,9 @@ status_t AudioSource::read(
         }
 
         ssize_t n = mRecord->read(buffer->data(), buffer->size());
-        if (n <= 0) {
-            LOGE("Read from AudioRecord returns: %ld", n);
+        if (n < 0) {
             buffer->release();
-            return UNKNOWN_ERROR;
+            return (status_t)n;
         }
 
         int64_t recordDurationUs = (1000000LL * n >> 1) / sampleRate;

@@ -133,57 +133,39 @@ status_t HTTPStream::connect(const char *server, int port) {
         return ERROR_ALREADY_CONNECTED;
     }
 
-    if (port < 0 || port > (int) USHRT_MAX) {
-        return UNKNOWN_ERROR;
-    }
-
-    char service[sizeof("65536")];
-    sprintf(service, "%d", port);
-    struct addrinfo hints, *ai;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV;
-    hints.ai_socktype = SOCK_STREAM;
-
-    int ret = getaddrinfo(server, service, &hints, &ai);
-    if (ret) {
+    struct hostent *ent = gethostbyname(server);
+    if (ent == NULL) {
         return ERROR_UNKNOWN_HOST;
     }
 
     CHECK_EQ(mSocket, -1);
+    mSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    mState = CONNECTING;
-    status_t res = -1;
-    struct addrinfo *tmp;
-    for (tmp = ai; tmp; tmp = tmp->ai_next) {
-        mSocket = socket(tmp->ai_family, tmp->ai_socktype, tmp->ai_protocol);
-        if (mSocket < 0) {
-            continue;
-        }
-
-        setReceiveTimeout(30);  // Time out reads after 30 secs by default.
-
-        int s = mSocket;
-
-        mLock.unlock();
-
-        res = MyConnect(s, tmp->ai_addr, tmp->ai_addrlen);
-
-        mLock.lock();
-
-        if (mState != CONNECTING) {
-            close(s);
-            freeaddrinfo(ai);
-            return UNKNOWN_ERROR;
-        }
-
-        if (res == OK) {
-            break;
-        }
-
-        close(s);
+    if (mSocket < 0) {
+        return UNKNOWN_ERROR;
     }
 
-    freeaddrinfo(ai);
+    setReceiveTimeout(30);  // Time out reads after 30 secs by default
+
+    mState = CONNECTING;
+
+    int s = mSocket;
+
+    mLock.unlock();
+
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = *(in_addr_t *)ent->h_addr;
+    memset(addr.sin_zero, 0, sizeof(addr.sin_zero));
+
+    status_t res = MyConnect(s, (const struct sockaddr *)&addr, sizeof(addr));
+
+    mLock.lock();
+
+    if (mState != CONNECTING) {
+        return UNKNOWN_ERROR;
+    }
 
     if (res != OK) {
         close(mSocket);

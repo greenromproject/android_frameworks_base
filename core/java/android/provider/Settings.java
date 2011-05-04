@@ -2020,14 +2020,6 @@ public final class Settings {
         public static final String POINTER_LOCATION = "pointer_location";
 
         /**
-         * Show mouse pointer on screen?
-         * 0 = no
-         * 1 = yes
-         * @hide
-         */
-        public static final String MOUSE_POINTER = "mouse_pointer";
-
-        /**
          * Whether to play a sound for low-battery alerts.
          * @hide
          */
@@ -2565,52 +2557,28 @@ public final class Settings {
          */
         public static final String WIDGET_BUTTONS = "expanded_widget_buttons";
 
-        /** 
-        * Notification Power Widget - Custom Brightness Mode
-        * @hide
-        */
+        /** @hide */
         public static final String EXPANDED_BRIGHTNESS_MODE = "expanded_brightness_mode";
 
-        /** 
-        * Notification Power Widget - Custom Network Mode
-        * @hide
-        */
+        /** @hide */
         public static final String EXPANDED_NETWORK_MODE = "expanded_network_mode";
 
-        /** 
-        * Notification Power Widget - Custom Screen Timeout
-        * @hide
-        */
+        /** @hide */
         public static final String EXPANDED_SCREENTIMEOUT_MODE = "expanded_screentimeout_mode";
 
-        /** 
-        * Notification Power Widget - Custom Ring Mode
-        * @hide
-        */
+        /** @hide */
         public static final String EXPANDED_RING_MODE = "expanded_ring_mode";
 
-        /** 
-        * Notification Power Widget - Custom Torch Mode
-        * @hide
-        */
+        /** @hide */
         public static final String EXPANDED_FLASH_MODE = "expanded_flash_mode";
 
-        /** 
-        * Enables the Screen-on animation
-        * @hide
-        */
+        /** @hide */
         public static final String ELECTRON_BEAM_ANIMATION_ON = "electron_beam_animation_on";
 
-        /** 
-        * Enables the Screen-off animation
-        * @hide
-        */
+        /** @hide */
         public static final String ELECTRON_BEAM_ANIMATION_OFF = "electron_beam_animation_off";
 
-        /**
-         * Enables the overscroller (edge bounce effect on lists)
-         * @hide
-         */
+        /** @hide */
         public static final String OVERSCROLL_EFFECT = "overscroll_effect";
 
         /**
@@ -3595,14 +3563,6 @@ public final class Settings {
                 "wifi_networks_available_repeat_delay";
 
         /**
-         * Whether to nofity the user of WiMAX network.
-         * If WiMAX is connected or disconnected, we will put this notification up.
-         * @hide
-         */
-        public static final String WIMAX_NETWORKS_AVAILABLE_NOTIFICATION_ON =
-                "wimax_networks_available_notification_on";
-
-        /**
          * The number of radio channels that are allowed in the local
          * 802.11 regulatory domain.
          * @hide
@@ -3739,8 +3699,7 @@ public final class Settings {
             "wifi_mobile_data_transition_wakelock_timeout_ms";
 
         /**
-         * Whether the Wimax should be on.  Only the WiMAX service should touch this.
-         * @hide
+         * Whether the Wimax should be on.  Only the Wimax service should touch this.
          */
         public static final String WIMAX_ON = "wimax_on";
 

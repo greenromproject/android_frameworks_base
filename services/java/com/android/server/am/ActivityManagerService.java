@@ -6681,9 +6681,8 @@ public final class ActivityManagerService extends ActivityManagerNative
 
         addErrorToDropBox("wtf", r, null, null, tag, null, null, crashInfo);
 
-        if (r != null && r.pid != Process.myPid() &&
-                Settings.Secure.getInt(mContext.getContentResolver(),
-                        Settings.Secure.WTF_IS_FATAL, 0) != 0) {
+        if (Settings.Secure.getInt(mContext.getContentResolver(),
+                Settings.Secure.WTF_IS_FATAL, 0) != 0) {
             crashApplication(r, crashInfo);
             return true;
         } else {

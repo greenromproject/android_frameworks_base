@@ -89,7 +89,7 @@ public class Process {
      * Defines the UID/GID for the NFC service process.
      * @hide
      */
-    public static final int NFC_UID = 1025;
+    public static final int NFC_UID = 1022;
 
     /**
      * Defines the start of a range of UIDs (and GIDs), going from this

@@ -109,8 +109,6 @@ private:
     status_t findPendingRequest(
             const sp<ARTSPResponse> &response, ssize_t *index) const;
 
-    bool handleServerRequest(const sp<ARTSPResponse> &request);
-
     static bool ParseSingleUnsignedLong(
             const char *from, unsigned long *x);
 

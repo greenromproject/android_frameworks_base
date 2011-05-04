@@ -182,8 +182,7 @@ class FrameLoader {
                                 settings.getAllowFileAccess())).sendToTarget();
             }
             return true;
-        } else if (settings.getAllowContentAccess() &&
-                   URLUtil.isContentUrl(url)) {
+        } else if (URLUtil.isContentUrl(url)) {
             // Send the raw url to the ContentLoader because it will do a
             // permission check and the url has to match.
             if (loadListener.isSynchronous()) {

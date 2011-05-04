@@ -193,7 +193,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     public void setupDataCall(String radioTechnology, String profile,
             String apn, String user, String password, String authType,
-            String protcol, Message result) {
+            Message result) {
     }
 
     public void deactivateDataCall(int cid, Message result) {
