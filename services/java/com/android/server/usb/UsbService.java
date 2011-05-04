@@ -512,4 +512,3 @@ public class UsbService extends IUsbManager.Stub {
     private native String[] nativeGetAccessoryStrings();
     private native ParcelFileDescriptor nativeOpenAccessory();
 }
-
