@@ -145,20 +145,19 @@ LOCAL_SRC_FILES:= \
     android_content_res_Configuration.cpp
 
 ifeq ($(BOARD_HAVE_FM_RADIO),true)
-ifeq ($(BOARD_WLAN_DEVICE),bcm4329)
-	LOCAL_SRC_FILES += android_hardware_fm_bcm4325.cpp
-endif
-ifeq ($(BOARD_WLAN_DEVICE),wl1251)
-	LOCAL_SRC_FILES += android_hardware_fm_wl1271.cpp
-endif
-ifeq ($(BOARD_WLAN_DEVICE),wl1271)
-	LOCAL_SRC_FILES += android_hardware_fm_wl1271.cpp
-endif
-endif
-
-ifeq ($(BOARD_HAVE_SQN_WIMAX),true)
-	LOCAL_SRC_FILES += android_net_wimax_WimaxCommonAPI.cpp
-	LOCAL_CFLAGS += -DBOARD_HAVE_SQN_WIMAX
+ifeq ($(BOARD_FM_DEVICE),si4709)
+	LOCAL_SRC_FILES += android_hardware_fm_si4709.cpp
+else
+	ifeq ($(BOARD_WLAN_DEVICE),bcm4329)
+		LOCAL_SRC_FILES += android_hardware_fm_bcm4325.cpp
+	endif
+	ifeq ($(BOARD_WLAN_DEVICE),wl1251)
+		LOCAL_SRC_FILES += android_hardware_fm_wl1271.cpp
+	endif
+	ifeq ($(BOARD_WLAN_DEVICE),wl1271)
+		LOCAL_SRC_FILES += android_hardware_fm_wl1271.cpp
+	endif
+	endif
 endif
 
 LOCAL_C_INCLUDES += \
@@ -248,6 +247,10 @@ ifneq ($(TARGET_RECOVERY_PRE_COMMAND),)
 endif
 
 LOCAL_MODULE:= libandroid_runtime
+
+ifneq ($(BOARD_MOBILEDATA_INTERFACE_NAME),)
+        LOCAL_CFLAGS += -DMOBILE_IFACE_NAME='$(BOARD_MOBILEDATA_INTERFACE_NAME)'
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 

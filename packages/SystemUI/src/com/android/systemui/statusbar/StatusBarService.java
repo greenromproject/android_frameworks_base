@@ -24,7 +24,8 @@ import com.android.internal.statusbar.StatusBarNotification;
 import com.android.systemui.statusbar.CmBatteryMiniIcon.SettingsObserver;
 import com.android.systemui.statusbar.powerwidget.PowerWidget;
 import com.android.systemui.R;
-
+import android.os.IPowerManager;
+import android.provider.Settings.SettingNotFoundException;
 import android.app.ActivityManagerNative;
 import android.app.Dialog;
 import android.app.Notification;
@@ -136,6 +137,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
     // top bar
     TextView mNoNotificationsTitle;
     TextView mClearButton;
+    TextView mCompactClearButton;
     ViewGroup mClearButtonParent;
     CmBatteryMiniIcon mCmBatteryMiniIcon;
     // drag bar
@@ -164,6 +166,11 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
     // the power widget
     PowerWidget mPowerWidget;
+
+    //Carrier label stuff
+    LinearLayout mCarrierLabelLayout;
+    LinearLayout mCompactCarrierLayout;
+    LinearLayout mPowerAndCarrier;
 
     // ticker
     private Ticker mTicker;
@@ -213,6 +220,10 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                     Settings.System.getUriFor(Settings.System.SOFT_BUTTONS_LEFT), false, this);
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.STATUS_BAR_DEAD_ZONE), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.STATUS_BAR_COMPACT_CARRIER), false, this);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.EXPANDED_VIEW_WIDGET), false, this);
             onChange(true);
         }
 
@@ -230,9 +241,15 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
             defValue=(CmSystem.getDefaultBool(mContext, CmSystem.CM_DEFAULT_USE_DEAD_ZONE) ? 1 : 0);
             mDeadZone = (Settings.System.getInt(resolver,
                     Settings.System.STATUS_BAR_DEAD_ZONE, defValue) == 1);
+            mCompactCarrier = (Settings.System.getInt(resolver,
+                    Settings.System.STATUS_BAR_COMPACT_CARRIER, 0) == 1);
             updateLayout();
+            updateCarrierLabel();
         }
     }
+
+    // for brightness control on status bar
+    int mLinger = 0;
 
     private class ExpandedDialog extends Dialog {
         ExpandedDialog(Context context) {
@@ -342,7 +359,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         return null;
     }
 
-    private boolean compactCarrier = false;
+    private boolean mCompactCarrier = false;
 
     // ================================================================================
     // Constructing the view
@@ -353,11 +370,9 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mIconSize = res.getDimensionPixelSize(com.android.internal.R.dimen.status_bar_icon_size);
 
         //Check for compact carrier layout and apply if enabled
-        compactCarrier = Settings.System.getInt(getContentResolver(),
-                                                       Settings.System.STATUS_BAR_COMPACT_CARRIER, 0) == 1;
-        ExpandedView expanded = compactCarrier ? (ExpandedView)View.inflate(context,
-                                                R.layout.status_bar_expanded_compact_carrier, null) :
-                                                (ExpandedView)View.inflate(context,
+        mCompactCarrier = Settings.System.getInt(getContentResolver(),
+                                                Settings.System.STATUS_BAR_COMPACT_CARRIER, 0) == 1;
+        ExpandedView expanded = (ExpandedView)View.inflate(context,
                                                 R.layout.status_bar_expanded, null);
         expanded.mService = this;
 
@@ -389,7 +404,9 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mNoNotificationsTitle = (TextView)expanded.findViewById(R.id.noNotificationsTitle);
         mClearButton = (TextView)expanded.findViewById(R.id.clear_all_button);
         mClearButton.setOnClickListener(mClearButtonListener);
-        mClearButtonParent = (ViewGroup)mClearButton.getParent();
+        mCompactClearButton = (TextView)expanded.findViewById(R.id.compact_clear_all_button);
+        mCompactClearButton.setOnClickListener(mClearButtonListener);
+        mPowerAndCarrier = (LinearLayout)expanded.findViewById(R.id.power_and_carrier);
         mScrollView = (ScrollView)expanded.findViewById(R.id.scroll);
         mNotificationLinearLayout = expanded.findViewById(R.id.notificationLinearLayout);
 
@@ -414,6 +431,9 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                    }
                });
 
+        mCarrierLabelLayout = (LinearLayout)expanded.findViewById(R.id.carrier_label_layout);
+        mCompactCarrierLayout = (LinearLayout)expanded.findViewById(R.id.compact_carrier_layout);
+
         mTicker = new MyTicker(context, sb);
 
         TickerView tickerView = (TickerView)sb.findViewById(R.id.tickerText);
@@ -424,14 +444,29 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         mCloseView = (CloseDragHandle)mTrackingView.findViewById(R.id.close);
         mCloseView.mService = this;
 
-        updateLayout();
         mContext=context;
+        updateLayout();
+        updateCarrierLabel();
 
         mEdgeBorder = res.getDimensionPixelSize(R.dimen.status_bar_edge_ignore);
 
         // set the inital view visibility
         setAreThereNotifications();
         mDateView.setVisibility(View.INVISIBLE);
+    }
+
+    private void updateCarrierLabel() {
+        if (mCompactCarrier) {
+            mCarrierLabelLayout.setVisibility(View.GONE);
+            mCompactCarrierLayout.setVisibility(View.VISIBLE);
+            if (mLatest.hasClearableItems())
+                mCompactClearButton.setVisibility(View.VISIBLE);
+        } else {
+            mCarrierLabelLayout.setVisibility(View.VISIBLE);
+            mCompactCarrierLayout.setVisibility(View.GONE);
+            mCompactClearButton.setVisibility(View.GONE);
+        }
+
     }
 
     private void updateLayout() {
@@ -453,7 +488,13 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
 
         // readd in right order
         mExpandedView.addView(powerAndCarrier, mBottomBar ? 1 : 0);
-        powerAndCarrier.addView(power, mBottomBar && !compactCarrier ? 1 : 0);
+        powerAndCarrier.addView(power, mBottomBar && !mCompactCarrier ? 1 : 0);
+
+        //remove small ugly grey area if compactcarrier is enabled and power widget disabled
+        boolean hideArea = mCompactCarrier &&
+                           Settings.System.getInt(mContext.getContentResolver(),
+                                   Settings.System.EXPANDED_VIEW_WIDGET, 1) == 0;
+        mPowerAndCarrier.setVisibility(hideArea ? View.GONE : View.VISIBLE);
     }
 
     protected void addStatusBarView() {
@@ -741,25 +782,17 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         return entry.notification;
     }
 
-    private boolean isClearButtonAdded = false;
-
     private void setAreThereNotifications() {
         boolean ongoing = mOngoing.hasVisibleItems();
         boolean latest = mLatest.hasVisibleItems();
 
         // (no ongoing notifications are clearable)
         if (mLatest.hasClearableItems()) {
+            if (mCompactCarrier) mCompactClearButton.setVisibility(View.VISIBLE);
             mClearButton.setVisibility(View.VISIBLE);
-            if (compactCarrier && !isClearButtonAdded) {
-                mClearButtonParent.addView(mClearButton);
-                isClearButtonAdded = true;
-            }
         } else {
+            mCompactClearButton.setVisibility(View.GONE);
             mClearButton.setVisibility(View.INVISIBLE);
-            if (compactCarrier) {
-                mClearButtonParent.removeView(mClearButton);
-                isClearButtonAdded = false;
-            }
         }
 
         mOngoingTitle.setVisibility(ongoing ? View.VISIBLE : View.GONE);
@@ -1125,7 +1158,7 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
         final int hitSize = statusBarSize*2;
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             final int y = (int)event.getRawY();
-
+            mLinger = 0;
             if (!mExpanded) {
                 mViewDelta = mBottomBar ? mDisplay.getHeight() - y : statusBarSize - y;
             } else {
@@ -1166,7 +1199,62 @@ public class StatusBarService extends Service implements CommandQueue.Callbacks 
                 int y = (int)event.getRawY();
                 if ((!mBottomBar && mAnimatingReveal && y < minY) ||
                         (mBottomBar && mAnimatingReveal && y > minY)) {
-                    // nothing
+                        try {
+                                if (Settings.System.getInt(mStatusBarView.getContext().getContentResolver(),Settings.System.STATUS_BAR_BRIGHTNESS_TOGGLE) == 1){
+                                        //Credit for code goes to daryelv github : https://github.com/daryelv/android_frameworks_base
+                                        // See if finger is moving left/right an adequate amount
+                                        mVelocityTracker.computeCurrentVelocity(1000);
+                                        float yVel = mVelocityTracker.getYVelocity();
+                                        if (yVel < 0) {
+                                                yVel = -yVel;
+                                        }
+                                        if (yVel < 50.0f) {
+                                                if (mLinger > 50) {
+                                                        // Check that Auto-Brightness not enabled
+                                                        Context context = mStatusBarView.getContext();
+                                                        boolean auto_brightness = false;
+                                                        int brightness_mode = 0;
+                                                        try {
+                                                                brightness_mode = Settings.System.getInt(context.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE);
+                                                        }catch (SettingNotFoundException e){
+                                                                auto_brightness = false;
+                                                        }
+                                                        auto_brightness = (brightness_mode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
+                                                        if (auto_brightness)
+                                                        {
+                                                                // do nothing - Don't manually set brightness from statusbar
+                                                        }
+                                                        else
+                                                        {
+                                                                // set brightness according to x position on statusbar
+                                                                float x = (float)event.getRawX();
+                                                                float screen_width = (float)(context.getResources().getDisplayMetrics().widthPixels);
+                                                                // Brightness set from the 90% of pixels in the middle of screen, can't always get to the edges
+                                                                int new_brightness = (int)(((x - (screen_width * 0.05f))/(screen_width * 0.9f)) * (float)android.os.Power.BRIGHTNESS_ON );
+                                                                // don't let screen go completely dim or past 100% bright
+                                                                if (new_brightness < 10) new_brightness = 10;
+                                                                if (new_brightness > android.os.Power.BRIGHTNESS_ON ) new_brightness = android.os.Power.BRIGHTNESS_ON;
+                                                                // Set the brightness
+                                                                try {
+                                                                        IPowerManager.Stub.asInterface(ServiceManager.getService("power")).setBacklightBrightness(new_brightness);
+                                                                        Settings.System.putInt(context.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, new_brightness);
+                                                                }catch (Exception e){
+                                                                        Slog.w(TAG, "Setting Brightness failed: " + e);
+                                                                }
+                                                       }
+                                                }
+                                                else
+                                                {
+                                                        mLinger++;
+                                                }
+                                        }
+                                        else
+                                        {
+                                                mLinger = 0;
+                                        }
+                                }
+                }catch (SettingNotFoundException e){
+                }
                 } else  {
                     mAnimatingReveal = false;
                     updateExpandedViewPos(y + (mBottomBar ? -mViewDelta : mViewDelta));

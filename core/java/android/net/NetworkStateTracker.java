@@ -81,11 +81,7 @@ public abstract class NetworkStateTracker extends Handler {
         mTarget = target;
         mTeardownRequested = false;
 
-        mNetworkInfo = new NetworkInfo(networkType, subType, typeName, subtypeName);
-
-        Log.d(TAG, "NetworkStateTracker::constructor() - networkType = " +
-                networkType + ", subType = " + subType + ", typeName = " + typeName + ", subtypeName = " + subtypeName);
-        Log.d(TAG, "NetworkStateTracker::constructor() - mNetworkInfo.isAvailable(): " + this.mNetworkInfo.isAvailable());
+        this.mNetworkInfo = new NetworkInfo(networkType, subType, typeName, subtypeName);
     }
 
     public NetworkInfo getNetworkInfo() {
@@ -137,7 +133,7 @@ public abstract class NetworkStateTracker extends Handler {
             Log.d(TAG, "addPrivateDnsRoutes for " + this +
                     "(" + mInterfaceName + ") - mPrivateDnsRouteSet = "+mPrivateDnsRouteSet);
         }
-        if (mInterfaceName != null && !mPrivateDnsRouteSet && !mInterfaceName.equalsIgnoreCase("wimax0")) {
+        if (mInterfaceName != null && !mPrivateDnsRouteSet) {
             for (String addrString : getNameServers()) {
                 int addr = NetworkUtils.lookupHost(addrString);
                 if (addr != -1 && addr != 0) {
@@ -171,13 +167,26 @@ public abstract class NetworkStateTracker extends Handler {
             }
 
             if (mDefaultGatewayAddr != 0) {
+                NetworkUtils.addHostRoute(mInterfaceName, mDefaultGatewayAddr);
                 NetworkUtils.setDefaultRoute(mInterfaceName, mDefaultGatewayAddr);
             } else if (mCachedGatewayAddr != 0) {
                 /*
                  * We don't have a default gateway set, so check if we have one cached due to
                  * a previous suspension.  If we do, then restore that one
                  */
-                NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
+                if (DBG) {
+                    Log.d(TAG, "addDefaultRoute: no default gateway, attempting to use cached gateway");
+                }
+                int r1 = NetworkUtils.addHostRoute(mInterfaceName, mCachedGatewayAddr);
+                int r2 = NetworkUtils.setDefaultRoute(mInterfaceName, mCachedGatewayAddr);
+                if (r1 < 0 || r2 < 0) {
+                    // something went wrong... restart the network
+                    if (DBG) {
+                        Log.d(TAG, "addDefaultRoute: something went terribly wrong... restart the network");
+                    }
+                    teardown();
+                    reconnect();
+                }
             }
 
             /*
@@ -220,12 +229,7 @@ public abstract class NetworkStateTracker extends Handler {
      */
    public void updateNetworkSettings() {
         String key = getTcpBufferSizesPropName();
-        String bufferSizes = null;
-        if (key.equalsIgnoreCase("net.tcp.buffersize.wimax")) {
-            bufferSizes = "4096,221184,524288,4096,16384,110208";
-        } else {
-            bufferSizes = SystemProperties.get(key);
-        }
+        String bufferSizes = SystemProperties.get(key);
 
         if (bufferSizes.length() == 0) {
             Log.w(TAG, key + " not found in system properties. Using defaults");
@@ -452,4 +456,7 @@ public abstract class NetworkStateTracker extends Handler {
     public void interpretScanResultsAvailable() {
     }
 
+    public String getInterfaceName() {
+        return mInterfaceName;
+    }
 }

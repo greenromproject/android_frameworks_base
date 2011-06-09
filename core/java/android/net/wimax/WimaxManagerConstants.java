@@ -149,5 +149,3 @@ public class WimaxManagerConstants
     public static final String EXTRA_NEW_STATE = "newState";
 
 }
-
-

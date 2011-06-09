@@ -68,9 +68,6 @@
 #define DISPLAY_COUNT       1
 
 #ifdef USE_LGE_HDMI
-extern "C" void MainRegisterHPD();
-extern "C" void MainUnRegisterHPD();
-extern "C" void NvDispMgrPreAutoOrientation(int rotation);
 extern "C" void NvDispMgrAutoOrientation(int rotation);
 #endif
 
@@ -110,9 +107,6 @@ SurfaceFlinger::SurfaceFlinger()
         mUseDithering(true)
 {
     init();
-#ifdef USE_LGE_HDMI
-    MainRegisterHPD();
-#endif
 }
 
 void SurfaceFlinger::init()
@@ -146,9 +140,6 @@ void SurfaceFlinger::init()
 SurfaceFlinger::~SurfaceFlinger()
 {
     glDeleteTextures(1, &mWormholeTexName);
-#ifdef USE_LGE_HDMI
-    MainUnRegisterHPD();
-#endif
 }
 
 overlay_control_device_t* SurfaceFlinger::getOverlayEngine() const
@@ -427,16 +418,8 @@ bool SurfaceFlinger::threadLoop()
         logger.log(GraphicLog::SF_COMPOSITION_COMPLETE, index);
         hw.compositionComplete();
 
-#ifdef USE_LGE_HDMI
-        NvDispMgrPreAutoOrientation(mCurrentState.orientation);
-#endif
-
         logger.log(GraphicLog::SF_SWAP_BUFFERS, index);
         postFramebuffer();
-
-#ifdef USE_LGE_HDMI
-        NvDispMgrAutoOrientation(mCurrentState.orientation);
-#endif
 
         logger.log(GraphicLog::SF_REPAINT_DONE, index);
     } else {
@@ -1105,12 +1088,8 @@ status_t SurfaceFlinger::removeLayer_l(const sp<LayerBase>& layerBase)
 
 status_t SurfaceFlinger::purgatorizeLayer_l(const sp<LayerBase>& layerBase)
 {
-    // First add the layer to the purgatory list, which makes sure it won't
-    // go away, then remove it from the main list (through a transaction).
+    // remove the layer from the main list (through a transaction).
     ssize_t err = removeLayer_l(layerBase);
-    if (err >= 0) {
-        mLayerPurgatory.add(layerBase);
-    }
 
     layerBase->onRemoved();
 
@@ -1207,6 +1186,9 @@ int SurfaceFlinger::setOrientation(DisplayID dpy,
         if (uint32_t(orientation)<=eOrientation270 || orientation==42) {
             mCurrentState.orientationType = flags;
             mCurrentState.orientation = orientation;
+#ifdef USE_LGE_HDMI
+            NvDispMgrAutoOrientation(mCurrentState.orientation);
+#endif
             setTransactionFlags(eTransactionNeeded);
             mTransactionCV.wait(mStateLock);
         } else {
@@ -1383,19 +1365,6 @@ status_t SurfaceFlinger::destroySurface(const sp<LayerBaseClient>& layer)
              * to use the purgatory.
              */
             status_t err = flinger->removeLayer_l(l);
-            if (err == NAME_NOT_FOUND) {
-                // The surface wasn't in the current list, which means it was
-                // removed already, which means it is in the purgatory,
-                // and need to be removed from there.
-                // This needs to happen from the main thread since its dtor
-                // must run from there (b/c of OpenGL ES). Additionally, we
-                // can't really acquire our internal lock from
-                // destroySurface() -- see postMessage() below.
-                ssize_t idx = flinger->mLayerPurgatory.remove(l);
-                LOGE_IF(idx < 0,
-                        "layer=%p is not in the purgatory list", l.get());
-            }
-
             LOGE_IF(err<0 && err != NAME_NOT_FOUND,
                     "error removing layer=%p (%s)", l.get(), strerror(-err));
             return true;
@@ -1511,13 +1480,8 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             result.append(buffer);
         }
 
-        /*
-         * Dump the visible layer list
-         */
         const LayerVector& currentLayers = mCurrentState.layersSortedByZ;
         const size_t count = currentLayers.size();
-        snprintf(buffer, SIZE, "Visible layers (count = %d)\n", count);
-        result.append(buffer);
         for (size_t i=0 ; i<count ; i++) {
             const sp<LayerBase>& layer(currentLayers[i]);
             layer->dump(result, buffer, SIZE);
@@ -1527,24 +1491,6 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             layer->visibleRegionScreen.dump(result, "visibleRegionScreen");
         }
 
-        /*
-         * Dump the layers in the purgatory
-         */
-
-        const size_t purgatorySize =  mLayerPurgatory.size();
-        snprintf(buffer, SIZE, "Purgatory state (%d entries)\n", purgatorySize);
-        result.append(buffer);
-        for (size_t i=0 ; i<purgatorySize ; i++) {
-            const sp<LayerBase>& layer(mLayerPurgatory.itemAt(i));
-            layer->shortDump(result, buffer, SIZE);
-        }
-
-        /*
-         * Dump SurfaceFlinger global state
-         */
-
-        snprintf(buffer, SIZE, "SurfaceFlinger global state\n");
-        result.append(buffer);
         mWormholeRegion.dump(result, "WormholeRegion");
         const DisplayHardware& hw(graphicPlane(0).displayHardware());
         snprintf(buffer, SIZE,
@@ -1570,9 +1516,6 @@ status_t SurfaceFlinger::dump(int fd, const Vector<String16>& args)
             result.append(buffer);
         }
 
-        /*
-         * Dump gralloc state
-         */
         const GraphicBufferAllocator& alloc(GraphicBufferAllocator::get());
         alloc.dump(result);
 
@@ -1764,6 +1707,10 @@ status_t SurfaceFlinger::renderScreenToTextureLocked(DisplayID dpy,
 
 // ---------------------------------------------------------------------------
 
+#ifndef ELECTRONBEAM_FRAMES
+ #define ELECTRONBEAM_FRAMES 12
+#endif
+
 status_t SurfaceFlinger::electronBeamOffAnimationImplLocked()
 {
     status_t result = PERMISSION_DENIED;
@@ -1846,8 +1793,8 @@ status_t SurfaceFlinger::electronBeamOffAnimationImplLocked()
         }
     };
 
-    // the full animation is 24 frames
-    const int nbFrames = 12;
+    // the full animation is 2*ELECTRONBEAM_FRAMES frames
+    const int nbFrames = ELECTRONBEAM_FRAMES;
     s_curve_interpolator itr(nbFrames, 7.5f);
     s_curve_interpolator itg(nbFrames, 8.0f);
     s_curve_interpolator itb(nbFrames, 8.5f);
@@ -2489,7 +2436,7 @@ ssize_t UserClient::getTokenForSurface(const sp<ISurface>& sur) const
             }
             break;
         }
-        if (++name > 31)
+        if (++name >= SharedBufferStack::NUM_LAYERS_MAX)
             name = NO_MEMORY;
     } while(name >= 0);
 

@@ -277,9 +277,10 @@ public class ZygoteInit {
             runtime.runFinalizationSync();
             Debug.startAllocCounting();
 
+            BufferedReader br = null;
+
             try {
-                BufferedReader br
-                    = new BufferedReader(new InputStreamReader(is), 256);
+                br = new BufferedReader(new InputStreamReader(is), 256);
 
                 int count = 0;
                 String line;
@@ -324,6 +325,11 @@ public class ZygoteInit {
             } catch (IOException e) {
                 Log.e(TAG, "Error reading " + PRELOADED_CLASSES + ".", e);
             } finally {
+                try {
+                    br.close();
+                } catch (final IOException e) {
+                    Log.w(TAG, "Error closing reader: " + PRELOADED_CLASSES + ".", e);
+                }
                 // Restore default.
                 runtime.setTargetHeapUtilization(defaultUtilization);
 
@@ -513,7 +519,7 @@ public class ZygoteInit {
         String args[] = {
             "--setuid=1000",
             "--setgid=1000",
-            "--setgroups=1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1300,3001,3002,3003",
+            "--setgroups=1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1018,1300,3001,3002,3003",
             "--capabilities=130104352,130104352",
             "--runtime-init",
             "--nice-name=system_server",
